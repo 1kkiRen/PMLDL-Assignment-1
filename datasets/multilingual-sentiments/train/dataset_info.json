@@ -1,0 +1,20 @@
+{
+  "citation": "All citation",
+  "description": "All datasets.",
+  "features": {
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "label": {
+      "names": [
+        "negative",
+        "neutral",
+        "positive"
+      ],
+      "_type": "ClassLabel"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}

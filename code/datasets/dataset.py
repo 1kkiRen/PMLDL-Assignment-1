@@ -58,6 +58,10 @@ def main():
     train = concatenate_datasets([train_ru, train_mixed])
     val = concatenate_datasets([val_ru, val_mixed])
     test = concatenate_datasets([test_ru, test_mixed])
+    
+    train = train.shuffle(seed=42)
+    val = val.shuffle(seed=42)
+    test = test.shuffle(seed=42)
 
     dataset = DatasetDict({
         'train': train,
@@ -65,8 +69,8 @@ def main():
         'test': test
     })
 
+    dataset.push_to_hub('multilingual-sentiments', private=False)
     dataset.save_to_disk('datasets/multilingual-sentiments')
-    dataset.save_to_disk('code/datasets/multilingual-sentiments')
 
 
 if __name__ == "__main__":

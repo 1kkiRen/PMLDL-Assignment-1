@@ -1,12 +1,17 @@
-from math import e
 import os
 import json
+import pickle
+import joblib
+from numpy import mean
 import torch
 from tqdm import tqdm
 import torch.nn as nn
 import huggingface_hub
 from datasets import load_dataset
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
+from sklearn.metrics import f1_score, accuracy_score
+
+os.environ["HF_HOME"] = "H:/.cache/huggingface"
 
 tokens = json.load(open('api_tokens.json'))
 huggingface_hub.login(token=tokens['huggingface'])
@@ -19,43 +24,33 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # tokenizer = AutoTokenizer.from_pretrained(
 #     'ikkiren/TokenSubstitution_tokenizer')
 
-
+class Tokenizer:
+    def __init__(self):
+        self.tokenizer = AutoTokenizer.from_pretrained(
+        'ikkiren/TokenSubstitution_tokenizer')
+    
+    def __call__(self):
+        return self.tokenizer
+    
 class SentimentAnalysisModel(nn.Module):
-    def __init__(self, input_size, num_classes):
+    def __init__(self, input_size, num_classes, pad_token, tokenizer = None):
         super(SentimentAnalysisModel, self).__init__()
-        self.embed = nn.Embedding(input_size, 2048)
-        self.lstm = nn.LSTM(input_size=2048, hidden_size=512,
-                            num_layers=2, batch_first=True)
-
-        self.linear = nn.Sequential(
-            nn.ReLU(),
-            nn.Dropout(0.25),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Dropout(0.25),
-            nn.Linear(512, num_classes),
-            nn.ReLU()
-        )
+        self.embedding = nn.EmbeddingBag(input_size, 128, pad_token)
+        self.linear = nn.Linear(128, num_classes)
+        self.tokenizer = tokenizer
 
     def forward(self, x):
-        x = self.embed(x)
-        x, _ = self.lstm(x)
+        x = self.embedding(x)
         x = self.linear(x)
-        x = x[:, -1, :]
-
+        x = torch.softmax(x, dim=1)
         return x
 
 
 def label_preprocess(label):
-    if label == 0:
-        return [1.0, 0.0, 0.0]
-    elif label == 1:
-        return [0.0, 1.0, 0.0]
-    elif label == 2:
-        return [0.0, 0.0, 1.0]
+    return label
 
 
-def create_dataloader(dataset, tokenizer: PreTrainedTokenizerFast, batch_size=32):
+def create_dataloader(dataset, tokenizer: PreTrainedTokenizerFast, batch_size=64):
     train_dataset = dataset['train']
     val_dataset = dataset['validation']
     test_dataset = dataset['test']
@@ -88,31 +83,100 @@ def create_dataloader(dataset, tokenizer: PreTrainedTokenizerFast, batch_size=32
     return train_dataloader, val_dataloader, test_dataloader
 
 
-def train(model, optimizer, criterion, train_dataloader, val_dataloader, num_epochs=10):
+def train(model, optimizer, criterion, train_dataloader, val_dataloader, num_epochs=50):
     epochs = tqdm(range(num_epochs))
-    
-    for epoch in epochs:
-        model.train()
-        for batch in train_dataloader:
-            optimizer.zero_grad()
-            text = batch['text'].to(device)
-            label = batch['label'].to(device)
-            output = model(text)
-            
-            loss = criterion(output, label)
-            loss.backward()
-            optimizer.step()
-            epochs.set_description(f'Epoch: {epoch+1}, Training loss: {loss.item()}')
-            
 
-        model.eval()
-        with torch.no_grad():
-            for batch in val_dataloader:
+    min_test_loss = 20
+
+    try:
+        for epoch in epochs:
+            model.train()
+            epochs.set_description(f'Epoch {epoch+1}/{num_epochs}')
+            train_data = tqdm(train_dataloader)
+
+            train_losses = []
+
+            for batch in train_data:
+                optimizer.zero_grad()
                 text = batch['text'].to(device)
                 label = batch['label'].to(device)
                 output = model(text)
+
                 loss = criterion(output, label)
-                epochs.set_description(f'Epoch: {epoch+1}, Validation loss: {loss.item()}')
+                loss.backward()
+                optimizer.step()
+
+                train_losses.append(loss.item())
+                train_data.set_postfix(
+                    {'train_loss': format(loss.item(), '.6f')})
+
+            model.eval()
+
+            last_val_batch = []
+            val_data = tqdm(val_dataloader)
+
+            test_losses = []
+            test_accuracies = []
+            test_f1 = []
+
+            with torch.no_grad():
+                for batch in val_data:
+                    text = batch['text'].to(device)
+                    label = batch['label'].to(device)
+                    output = model(text)
+                    loss = criterion(output, label)
+
+                    test_losses.append(loss.item())
+
+                    last_val_batch.append(output)
+                    last_val_batch.append(label)
+
+                    ans = torch.argmax(output, dim=1)
+                    test_accuracies.append(
+                        accuracy_score(label.cpu(), ans.cpu()))
+                    test_f1.append(
+                        f1_score(label.cpu(), ans.cpu(), average='weighted'))
+
+                    # print({'test loss': loss.item()})
+                    val_data.set_postfix({'test_loss': format(loss.item(), '.6f'), 'accuracy': format(
+                        mean(test_accuracies), '.6f'), 'f1': format(mean(test_f1), '.6f')})
+
+            print(f"Epoch {epoch + 1}\nTrain loss: {mean(train_losses)} Test loss: {mean(test_losses)} Test accuracy: {mean(test_accuracies)} Test F1: {mean(test_f1)}")
+
+            if mean(test_losses) < min_test_loss:
+                torch.save(model.state_dict(), 'model_linear.pth')
+                print("Model saved")
+
+            min_test_loss = min(min_test_loss, mean(test_losses))
+
+    except KeyboardInterrupt:
+        print("Training stopped")
+        torch.save(model.state_dict(), 'model_linear_keyborad_stop.pth')
+
+
+def test(model, test_dataloader):
+    model.eval()
+    test_data = tqdm(test_dataloader)
+
+    test_accuracies = []
+    test_f1 = []
+
+    with torch.no_grad():
+        for batch in test_data:
+            text = batch['text'].to(device)
+            label = batch['label'].to(device)
+            output = model(text)
+
+            ans = torch.argmax(output, dim=1)
+            test_accuracies.append(
+                accuracy_score(label.cpu(), ans.cpu()))
+            test_f1.append(
+                f1_score(label.cpu(), ans.cpu(), average='weighted'))
+
+            test_data.set_postfix(
+                {'accuracy': format(mean(test_accuracies), '.6f'), 'f1': format(mean(test_f1), '.6f')})
+
+    print(f"Test accuracy: {mean(test_accuracies)} Test F1: {mean(test_f1)}")
 
 
 def main():
@@ -125,14 +189,33 @@ def main():
     train_dataloader, val_dataloader, test_dataloader = create_dataloader(
         dataset, tokenizer)
 
-    model = SentimentAnalysisModel(len(tokenizer), 3).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    model = SentimentAnalysisModel(
+        len(tokenizer), 3, tokenizer.pad_token_id, tokenizer).to("cpu")
+
+    try:
+        model.load_state_dict(torch.load('model_linear.pth'))
+        print("Model loaded")
+        joblib.dump(model, 'model.pkl')
+        joblib.dump(tokenizer, 'tokenizer.pkl')
+    except:
+        print("Model not loaded")
+        print("Training new model")
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005)
     criterion = nn.CrossEntropyLoss()
 
-    print(len(tokenizer), model, optimizer, criterion)
+    print(model)
+
+    # Num of parameters
+    print(sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     train(model, optimizer, criterion, train_dataloader, val_dataloader)
     torch.save(model.state_dict(), 'model.pth')
+
+    test(model, test_dataloader)
+    
+    # pickle.dump(tokenizer, open('tokenizer.pkl', 'wb'))
+    # pickle.dump(model, open('model.pkl', 'wb'))
 
 
 if __name__ == '__main__':

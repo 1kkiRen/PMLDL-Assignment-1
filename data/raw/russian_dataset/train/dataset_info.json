@@ -1,0 +1,70 @@
+{
+  "builder_name": "json",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "kinopoisk-sentiment-classification",
+  "dataset_size": 47200331,
+  "description": "",
+  "download_checksums": {
+    "hf://datasets/ai-forever/kinopoisk-sentiment-classification@4937df51b02a4c748b38bace5d749524fd90ae4a/train.jsonl": {
+      "num_bytes": 37087758,
+      "checksum": null
+    },
+    "hf://datasets/ai-forever/kinopoisk-sentiment-classification@4937df51b02a4c748b38bace5d749524fd90ae4a/validation.jsonl": {
+      "num_bytes": 5389373,
+      "checksum": null
+    },
+    "hf://datasets/ai-forever/kinopoisk-sentiment-classification@4937df51b02a4c748b38bace5d749524fd90ae4a/test.jsonl": {
+      "num_bytes": 5267224,
+      "checksum": null
+    }
+  },
+  "download_size": 47744355,
+  "features": {
+    "id": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "label": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "label_text": {
+      "dtype": "string",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 94944686,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 36664616,
+      "num_examples": 10500,
+      "dataset_name": "kinopoisk-sentiment-classification"
+    },
+    "validation": {
+      "name": "validation",
+      "num_bytes": 5328743,
+      "num_examples": 1500,
+      "dataset_name": "kinopoisk-sentiment-classification"
+    },
+    "test": {
+      "name": "test",
+      "num_bytes": 5206972,
+      "num_examples": 1500,
+      "dataset_name": "kinopoisk-sentiment-classification"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

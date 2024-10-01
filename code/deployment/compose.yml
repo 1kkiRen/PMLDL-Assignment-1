@@ -1,0 +1,11 @@
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000" 
+  app:
+    build: ./app
+    ports:
+      - "8010:8010"
+    depends_on:
+      - api

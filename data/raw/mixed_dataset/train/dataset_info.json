@@ -1,0 +1,74 @@
+{
+  "builder_name": "parquet",
+  "citation": "All citation",
+  "config_name": "all",
+  "dataset_name": "multilingual-sentiments",
+  "dataset_size": 74198731,
+  "description": "All datasets.",
+  "download_checksums": {
+    "hf://datasets/tyqiangz/multilingual-sentiments@be62509a25678d289e65505e4ebba45196e64823/all/train/0000.parquet": {
+      "num_bytes": 37053404,
+      "checksum": null
+    },
+    "hf://datasets/tyqiangz/multilingual-sentiments@be62509a25678d289e65505e4ebba45196e64823/all/validation/0000.parquet": {
+      "num_bytes": 1264939,
+      "checksum": null
+    },
+    "hf://datasets/tyqiangz/multilingual-sentiments@be62509a25678d289e65505e4ebba45196e64823/all/test/0000.parquet": {
+      "num_bytes": 1463266,
+      "checksum": null
+    }
+  },
+  "download_size": 39781609,
+  "features": {
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "source": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "language": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "label": {
+      "names": [
+        "positive",
+        "neutral",
+        "negative"
+      ],
+      "_type": "ClassLabel"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 113980340,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 69097158,
+      "num_examples": 270399,
+      "dataset_name": "multilingual-sentiments"
+    },
+    "validation": {
+      "name": "validation",
+      "num_bytes": 2355474,
+      "num_examples": 10857,
+      "dataset_name": "multilingual-sentiments"
+    },
+    "test": {
+      "name": "test",
+      "num_bytes": 2746099,
+      "num_examples": 14465,
+      "dataset_name": "multilingual-sentiments"
+    }
+  },
+  "version": {
+    "version_str": "1.0.0",
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  }
+}

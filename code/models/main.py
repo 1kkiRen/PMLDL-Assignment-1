@@ -1,6 +1,5 @@
 import os
 import json
-import pickle
 import joblib
 from numpy import mean
 import torch
@@ -18,22 +17,18 @@ huggingface_hub.login(token=tokens['huggingface'])
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Sentiment Analysis Model with 3 classes
-
-
-# tokenizer = AutoTokenizer.from_pretrained(
-#     'ikkiren/TokenSubstitution_tokenizer')
 
 class Tokenizer:
     def __init__(self):
         self.tokenizer = AutoTokenizer.from_pretrained(
-        'ikkiren/TokenSubstitution_tokenizer')
-    
+            'ikkiren/TokenSubstitution_tokenizer')
+
     def __call__(self):
         return self.tokenizer
-    
+
+
 class SentimentAnalysisModel(nn.Module):
-    def __init__(self, input_size, num_classes, pad_token, tokenizer = None):
+    def __init__(self, input_size, num_classes, pad_token, tokenizer=None):
         super(SentimentAnalysisModel, self).__init__()
         self.embedding = nn.EmbeddingBag(input_size, 128, pad_token)
         self.linear = nn.Linear(128, num_classes)
@@ -55,7 +50,6 @@ def create_dataloader(dataset, tokenizer: PreTrainedTokenizerFast, batch_size=64
     val_dataset = dataset['validation']
     test_dataset = dataset['test']
 
-    # Tokenize the dataset
     train_dataset = train_dataset.map(lambda x: {
         'text': tokenizer.encode(
             x['text'], truncation=True, padding='max_length', max_length=2048, add_special_tokens=False),
@@ -137,7 +131,6 @@ def train(model, optimizer, criterion, train_dataloader, val_dataloader, num_epo
                     test_f1.append(
                         f1_score(label.cpu(), ans.cpu(), average='weighted'))
 
-                    # print({'test loss': loss.item()})
                     val_data.set_postfix({'test_loss': format(loss.item(), '.6f'), 'accuracy': format(
                         mean(test_accuracies), '.6f'), 'f1': format(mean(test_f1), '.6f')})
 
@@ -193,10 +186,8 @@ def main():
         len(tokenizer), 3, tokenizer.pad_token_id, tokenizer).to("cpu")
 
     try:
-        model.load_state_dict(torch.load('model_linear.pth'))
+        model.load_state_dict(torch.load('model.pth'))
         print("Model loaded")
-        joblib.dump(model, 'model.pkl')
-        joblib.dump(tokenizer, 'tokenizer.pkl')
     except:
         print("Model not loaded")
         print("Training new model")
@@ -205,17 +196,15 @@ def main():
     criterion = nn.CrossEntropyLoss()
 
     print(model)
-
-    # Num of parameters
     print(sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     train(model, optimizer, criterion, train_dataloader, val_dataloader)
     torch.save(model.state_dict(), 'model.pth')
 
     test(model, test_dataloader)
-    
-    # pickle.dump(tokenizer, open('tokenizer.pkl', 'wb'))
-    # pickle.dump(model, open('model.pkl', 'wb'))
+
+    joblib.dump(model, open('model.pkl', 'wb'))
+    joblib.dump(tokenizer, open('tokenizer.pkl', 'wb'))
 
 
 if __name__ == '__main__':

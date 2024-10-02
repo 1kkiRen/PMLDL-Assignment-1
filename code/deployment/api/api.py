@@ -5,7 +5,6 @@ from fastapi import FastAPI
 import joblib
 import uvicorn
 
-# create an instance of FastAPI
 app = FastAPI()
 
 
@@ -17,11 +16,10 @@ class PredictionRequest(BaseModel):
 def read_root():
     return {'message': 'Welcome to the text classification app'}
 
-# create a post method
-
 
 @app.post('/predict')
 def predict(payload: PredictionRequest):
+
     with torch.no_grad():
         tokens = tokenizer.encode(payload.text, add_special_tokens=False)
         output = model(torch.tensor(tokens).unsqueeze(0))
@@ -34,12 +32,9 @@ def predict(payload: PredictionRequest):
         ans = 'Neutral'
     else:
         ans = 'Positive'
-
-    # return the prediction
     return {'prediction': ans}
 
 
-# # run the app
 if __name__ == '__main__':
     class SentimentAnalysisModel(nn.Module):
         def __init__(self, input_size, num_classes, pad_token, tokenizer):
@@ -54,10 +49,10 @@ if __name__ == '__main__':
             x = torch.softmax(x, dim=1)
             return x
 
-    model = joblib.load(open('model.pkl', 'rb'))
-    tokenizer = joblib.load(open('tokenizer.pkl', 'rb'))
+    model = joblib.load(open('../../models/model.pkl', 'rb'))
+    tokenizer = joblib.load(open('../../models/tokenizer.pkl', 'rb'))
 
     model.eval()
     model.to('cpu')
-    
+
     uvicorn.run(app, host='0.0.0.0', port=8000)
